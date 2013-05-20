@@ -1,7 +1,7 @@
 clj-kue
 =======
 
-Clojure client for [Kue](http://learnboost.github.io/kue/).
+Clojure client for [Kue](http://learnboost.github.io/kue/) build on top of [Carmine](https://github.com/ptaoussanis/carmine).
 
 ### Main functionality
 
@@ -29,6 +29,29 @@ With Maven:
 ```
 
 ## Usage
+
+### Redis Connection Settings
+
+`clj-kue` is build on top of [Carmine](https://github.com/ptaoussanis/carmine).
+
+To create connection pool for your workers use `connect!` function from `clj-kue.redis` namespace:
+
+```Clojure
+(require '[clj-kue.redis :as redis])
+
+(redis/connect!)
+```
+
+You can also specify connection spec (e.g. host, port, db, timeout, uri) and connections pool options:
+
+```Clojure
+(def spec-opts {:db 1})
+(def pool-opts {:max-total 20})
+
+(redis/connect! spec-opts pool-opts)
+```
+
+For the full list of avaliable connections pool options see [GenericKeyedObjectPool documentation](http://commons.apache.org/proper/commons-pool/apidocs/org/apache/commons/pool/impl/GenericKeyedObjectPool.html).
 
 ### Workers
 
@@ -67,6 +90,10 @@ Instead of using `Worker` function from `clj-kue.worker` namespace you can spawn
 ; Starts 3 workers
 (process "test" 3 your-handler)
 ```
+
+### Exception handling
+
+Workers automatically handles all exeptions in jobs handlers. So, if any exception is thrown in job handler, worker logs this exception and treat the job as failed.
 
 ### Example
 
