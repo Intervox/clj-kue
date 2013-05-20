@@ -41,7 +41,7 @@ To create a worker, you use `Worker` function from `clj-kue.worker` namespace:
 (.start worker)
 ```
 
-Each worker have `step, `start` and `stop` methods.
+Each worker have `step`, `start` and `stop` methods.
 
 `step` methods reads single job from `Kue` and processes it with the specified handler.
 
