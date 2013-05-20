@@ -1,8 +1,9 @@
 (ns clj-kue.worker
   (:require [clj-kue.redis  :as r])
+  (:use [clj-kue.job :only [getJob]])
   (:use clj-kue.util))
 
-(defn get-job
+(defn get-next-job
   "Attempt to fetch the next job"
   [type]
   (let [lkey  (str "q:" type ":jobs")
@@ -34,8 +35,8 @@
     (start type f 1000))
   ([type f sleep]
     (with-log-err
-      (when-let [id (get-job type)]
-        (let [job (new clj-kue.job id)]
+      (when-let [id (get-next-job type)]
+        (let [job (getJob id)]
           (.active job)
           (if-let [t  (process job f)]
             (do (.complete job)

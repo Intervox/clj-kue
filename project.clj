@@ -6,5 +6,4 @@
   :dependencies [ [clj-time             "0.4.4"]
                   [cheshire             "5.0.0"]
                   [com.taoensso/carmine "1.6.0"]
-                  [org.clojure/clojure  "1.4.0"]]
-  :aot [clj-kue.job])
+                  [org.clojure/clojure  "1.4.0"]])

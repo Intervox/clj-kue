@@ -1,48 +1,10 @@
 (ns clj-kue.job
-  (:refer-clojure :exclude [set])
+  (:refer-clojure :exclude [get set])
   (:require [clj-kue.redis  :as r     ]
             [clojure.walk   :as walk  ])
   (:use (clj-time [core   :only [now]]
                   [coerce :only [to-long from-long]])
-        clj-kue.util)
-  (:gen-class
-    :name     clj-kue.job
-    :state    data
-    :init     init
-    :prefix   "job-"
-    :main     false
-    :methods  [ [get [] clojure.lang.PersistentArrayMap]
-                [get [String] String]
-                [get [clojure.lang.Keyword] String]
-                [set [String String] void]
-                [set [clojure.lang.Keyword String] void]
-                [set [String clojure.lang.Keyword] void]
-                [set [clojure.lang.Keyword clojure.lang.Keyword] void]
-                [set [String Long] void]
-                [set [clojure.lang.Keyword Long] void]
-                [set [String Float] void]
-                [set [clojure.lang.Keyword Float] void]
-                [touch [] void]
-                [removeState [] void]
-                [state [String] void]
-                [state [clojure.lang.Keyword] void]
-                [complete [] void]
-                [failed [] void]
-                [inactive [] void]
-                [active [] void]
-                [progress [] String]
-                [progress [Long Long] void]
-                [log [String] void]
-                [priority [] String]
-                [priority [Long] void]
-                [priority [String] void]
-                [priority [clojure.lang.Keyword] void]
-                [error [] String]
-                [error [String] void]
-                [error [Exception] void]
-                [attempt [] Boolean]]
-    :constructors { [] []
-                    [String] []}))
+        clj-kue.util))
 
 (def priorities
   { :low      "10"
@@ -51,11 +13,138 @@
     :high     "-10"
     :critical "-15" })
 
-(defn set [this k v]
-  (swap! (.data this) assoc (keyword k) (name v)))
+(defprotocol IKueJob
+  (get [this] [this k]
+    "Get a value of a field")
+  (set [this k v]
+    "Set a value of a field")
+  (touch [this]
+    "Update updated_at field")
+  (removeState [this]
+    "Clear current state")
+  (state [this state]
+    "Set current state")
+  (complete [this])
+  (failed [this])
+  (inactive [this])
+  (active [this])
+  (progress [this] [this complete total]
+    "Get or update progress value")
+  (log [this s]
+    "Log a string")
+  (priority [this] [this level]
+    "Set or get the priority level")
+  (error [this] [this err]
+    "Set or get the job's failure err")
+  (attempt [this]
+    "Increment attemps, returns true if any attemps left"))
 
-(defn getJob
-  [id]
+(defn- set* [storage k v]
+  (swap! storage assoc
+    (keyword k) (if (keyword? v) (name v) v)))
+
+(deftype KueJob [storage]
+
+  IKueJob
+
+  (get [this]
+    @storage)
+
+  (get [this k]
+    (clojure.core/get @storage (keyword k)))
+
+  (set [this k v]
+    (set* storage k v)
+    (let [id  (.get this :id)]
+      (r/with-conn
+        (r/command :hset (str "q:job:" id) k v)))
+    this)
+
+  (touch [this]
+    (.set this :updated_at (to-long (now))))
+
+  (removeState
+    [this]
+    (let [{:keys [id state type]} (.get this)]
+      (r/with-conn
+        (r/command :zrem "q:jobs" id)
+        (r/command :zrem (str "q:jobs:" state) id)
+        (r/command :zrem (str "q:jobs:" type ":" state) id)))
+    this)
+
+  (state [this state]
+    (.removeState this)
+    (.set this :state state)
+    (let [{:keys [id priority state type]} (.get this)]
+      (r/with-conn
+        (r/command :zadd "q:jobs" priority id)
+        (r/command :zadd (str "q:jobs:" state) priority id)
+        (r/command :zadd (str "q:jobs:" type ":" state) priority id)
+        (if (= state "inactive")
+            (r/command :lpush (str "q:" type ":jobs") 1)))
+      (.touch this)))
+
+  (complete [this]
+    (.set this :progress 100)
+    (.state this :complete))
+
+  (failed [this]
+    (.state this :failed))
+
+  (inactive [this]
+    (.state this :inactive))
+
+  (active [this]
+    (.state this :active))
+
+  (progress [this]
+    (.get this :progress))
+
+  (progress [this complete total]
+    (->>  (/ complete total)
+          (* 100)
+          float
+          (min 100)
+          (.set this :progress))
+    (.touch this))
+
+  (log [this s]
+    (let [id  (.get this :id)]
+      (r/with-conn
+        (r/command :rpush (str "q:job:" id ":log") s)))
+    (.touch this))
+
+  (priority [this]
+    (.get this :priority))
+
+  (priority [this level]
+    (set* storage :priority (or (priorities level) level))
+    this)
+
+  (error [this]
+    (.get this :error))
+
+  (error [this err]
+    (let [msg (safely (.getMessage err))
+          sum (safely (get-stack-trace err))]
+      (.set this :error (or msg err))
+      (.log this (or sum "")))
+    (.set this :failed_at (to-long (now))))
+
+  (attempt [this]
+    (let [id    (.get this :id)
+          -key  (str "q:job:" id)]
+      (.touch this)
+      (->>  (r/with-conn
+              (r/command :hsetnx  -key :max_attempts 1)
+              (r/command :hget    -key :max_attempts  )
+              (r/command :hincrby -key :attempts     1))
+            (drop 1)
+            (map (comp read-string str))
+            (apply -)
+            pos?))))
+
+(defn getJob [id]
   (let [-key  (str "q:job:" id)
         data  (->>  (r/with-conn
                       (r/command :hgetall -key))
@@ -64,124 +153,8 @@
                     (into {})
                     walk/keywordize-keys)]
     (if (empty? data)
-        (throw (Exception. (str "job " id " doesnt exist"))))
-    (assoc (r/parse data :data) :id id)))
-
-; Constructor
-
-(defn job-init
-  ([]
-    [[] (atom {})])
-  ([id]
-    [[] (atom (getJob id))]))
-
-; Methods
-
-(defn job-get
-  "Get a value of a field"
-  ([this]
-    @(.data this))
-  ([this k]
-    (get @(.data this) (keyword k))))
-
-(defn job-set
-  "Set a value of a field"
-  [this k v]
-  (set this k v)
-  (let [{:keys [id]} (.get this)]
-    (r/with-conn
-      (r/command :hset (str "q:job:" id) k v))))
-
-(defn job-touch
-  "Update updated_at field"
-  [this]
-  (.set this :updated_at (to-long (now))))
-
-(defn job-removeState
-  "Clear current state"
-  [this]
-  (let [{:keys [id state type]} (.get this)]
-    (r/with-conn
-      (r/command :zrem "q:jobs" id)
-      (r/command :zrem (str "q:jobs:" state) id)
-      (r/command :zrem (str "q:jobs:" type ":" state) id))))
-
-(defn job-state
-  "Set current state"
-  [this state]
-  (.removeState this)
-  (.set this :state state)
-  (let [{:keys [id priority state type]} (.get this)]
-    (r/with-conn
-      (r/command :zadd "q:jobs" priority id)
-      (r/command :zadd (str "q:jobs:" state) priority id)
-      (r/command :zadd (str "q:jobs:" type ":" state) priority id)
-      (if (= state "inactive")
-          (r/command :lpush (str "q:" type ":jobs") 1)))
-    (.touch this)))
-
-(defn job-complete [this]
-  (.set this :progress 100)
-  (.state this :complete))
-
-(defn job-failed [this]
-  (.state this :failed))
-
-(defn job-inactive [this]
-  (.state this :inactive))
-
-(defn job-active [this]
-  (.state this :active))
-
-(defn job-progress
-  "Get or update progress value"
-  ([this]
-    (.get this :progress))
-  ([this complete total]
-    (->>  (/ complete total)
-          (* 100)
-          float
-          (min 100)
-          (.set this :progress))
-    (.touch this)))
-
-(defn job-log
-  "Log a string"
-  [this s]
-  (let [{:keys [id]} (.get this)]
-    (r/with-conn
-      (r/command :rpush (str "q:job:" id ":log") s)))
-  (.touch this))
-
-(defn job-priority
-  "Set or get the priority level"
-  ([this]
-    (.get this :priority))
-  ([this level]
-    (set this :priority (or (priorities level) level))))
-
-(defn job-error
-  "Set or get the job's failure err"
-  ([this]
-    (.get this :error))
-  ([this err]
-    (let [msg (safely (.getMessage err))
-          sum (safely (get-stack-trace err))]
-      (.set this :error (or msg err))
-      (.log this (or sum "")))
-    (.set this :failed_at (to-long (now)))))
-
-(defn job-attempt
-  "Increment attemps, returns true if any attemps left"
-  [this]
-  (let [{:keys [id]}    (.get this)
-        -key            (str "q:job:" id)]
-    (.touch this)
-    (->>  (r/with-conn
-            (r/command :hsetnx  -key :max_attempts 1)
-            (r/command :hget    -key :max_attempts  )
-            (r/command :hincrby -key :attempts     1))
-          (drop 1)
-          (map (comp read-string str))
-          (apply -)
-          pos?)))
+        (throw (Exception. (str "job " id " doesnt exist")))
+        (-> (r/parse data :data)
+            (assoc :id id)
+            atom
+            KueJob.))))
