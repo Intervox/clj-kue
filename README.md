@@ -3,6 +3,8 @@ clj-kue
 
 Clojure client for [Kue](http://learnboost.github.io/kue/) build on top of [Carmine](https://github.com/ptaoussanis/carmine).
 
+Compatible with `Kue 0.6.x.`, tested with `Kue 0.6.2.`.
+
 ### Main functionality
 
  * Fully-functional Kue jobs.
