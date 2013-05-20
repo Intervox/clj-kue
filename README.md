@@ -8,6 +8,26 @@ Clojure client for [Kue](http://learnboost.github.io/kue/).
  * Fulli-functional Kue jobs.
  * Parallel workers for jobs processing.
 
+## Installing
+
+You can install `clj-kue` using [clojars repository](https://clojars.org/intervox/clj-kue).
+
+With Leiningen:
+
+```Clojure
+[intervox/clj-kue "0.1.0"]
+```
+
+With Maven:
+
+```xml
+<dependency>
+  <groupId>intervox</groupId>
+  <artifactId>clj-kue</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
+
 ## Usage
 
 ### Workers
