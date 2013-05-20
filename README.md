@@ -5,10 +5,10 @@ Clojure client for [Kue](http://learnboost.github.io/kue/).
 
 ### Main functionality
 
- * Fulli-functional Kue jobs.
+ * Fully-functional Kue jobs.
  * Parallel workers for jobs processing.
 
-## Installing
+## Installation
 
 You can install `clj-kue` using [clojars repository](https://clojars.org/intervox/clj-kue).
 
@@ -49,9 +49,11 @@ Each worker have `step`, `start` and `stop` methods.
 
 `stop` method closes processing thread. If no `timeout` is specified, it terminates current `step` immediately. If `timeout` is specified, it waits `timeout` miliseconds for `step` to complete. Since `step` includes fetching the current job from the `Kue`, it won't be terminated immediately when the queue is empty.
 
+You can also use `get` and `set` methods to access and update workers properties. Workers use `ref`s to store their state allowing you to perform "hot" update of their properties. For example, you can set a new jobs handler without stopping the worker.
+
 ### Creating job handler
 
-Job handler is an ordinary function taking the current job as its argument.
+Job handler is an ordinary function taking the current job as its single argument.
 
 Since workers ignore the output of the function, you shoud use `job` methods to pass processing results back to `Kue`. For the full list see [IKueJob protocol](https://github.com/Intervox/clj-kue/blob/master/src/clj_kue/job.clj#L16).
 
