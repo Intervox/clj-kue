@@ -99,7 +99,7 @@ Workers automatically handles all exeptions in jobs handlers. So, if any excepti
 
 To handle the following job
 
-```java-script
+```js
 var kue = require('./index.js')
   , jobs = kue.createQueue();
 
