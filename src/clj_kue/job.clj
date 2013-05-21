@@ -125,10 +125,14 @@
     (.get this :error))
 
   (error [this err]
-    (let [msg (safely (.getMessage err))
-          sum (safely (get-stack-trace err))]
-      (.set this :error (or msg err))
-      (.log this (or sum "")))
+    (let [msg (if-not (string? err)
+                      (safely (or (.getMessage err)
+                                  (.toString err)))
+                      err)
+          sum (if-not (string? err)
+                      (safely (get-stack-trace err)))]
+      (.set this :error msg)
+      (.log this sum))
     (.set this :failed_at (to-long (now))))
 
   (attempt [this]
