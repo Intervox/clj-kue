@@ -17,7 +17,7 @@ You can install `clj-kue` using [clojars repository](https://clojars.org/intervo
 With Leiningen:
 
 ```Clojure
-[intervox/clj-kue "0.1.0"]
+[intervox/clj-kue "0.1.1"]
 ```
 
 With Maven:
@@ -26,7 +26,7 @@ With Maven:
 <dependency>
   <groupId>intervox</groupId>
   <artifactId>clj-kue</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
 </dependency>
 ```
 
