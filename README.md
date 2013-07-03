@@ -55,6 +55,14 @@ You can also specify connection spec (e.g. host, port, db, timeout, uri) and con
 
 For the full list of avaliable connections pool options see [GenericKeyedObjectPool documentation](http://commons.apache.org/proper/commons-pool/apidocs/org/apache/commons/pool/impl/GenericKeyedObjectPool.html).
 
+If you're already using [Carmine](https://github.com/ptaoussanis/carmine) in your project and already have its connection pool and connection spec objects, then you can reuse them:
+
+```
+(use 'clj-kue.carmine)
+
+(set-connection! conn-pool conn-spec)
+```
+
 ### Workers
 
 To create a worker, you use `Worker` function from `clj-kue.worker` namespace:
@@ -125,6 +133,55 @@ we spawn a single worker, reporting its progress and logging its results.
         (Thread/sleep step)
         (.progress job i ticks))
       (.log job log))))
+```
+
+### Better alternative to `clj.core/process`
+
+Instead of using `clj.core/process` function to spawn workers you can use helpers from `clj-kue.helpers` namespace.
+
+Available helpers macros:
+
+ * `with-kue-job` wraps the execution of the job
+ * `kue-handler` creates a handler function with specified bindings, wrapped with `with-kue-job`
+ * `defhandler` also defines it
+ * `kue-worker` spawns single worker woth specified `kue-handler`
+
+Advantages of wrapping your handler with `with-kue-job`:
+
+ * It catches any console output and sends it to `kue` using job's `log` metod.
+ * If you're using [clj-progress](https://github.com/Intervox/clj-progress), it wraps it with special `progress-handler` and sends it to `kue` using job's `progress` metod.
+
+The previous example may be rewriten using `clj-kue.helpers` namespace:
+
+```Clojure
+(use '[clj-kue.helpers :only [kue-worker]])
+(use 'clj-progress.core)
+
+(kue-worker :test {:keys [step ticks log]}
+  (init ticks)
+  (dotimes [i ticks]
+    (Thread/sleep step)
+    (tick))
+  (println log)
+  (done))
+```
+
+Or, if you want to spawn multiple workers:
+
+```Clojure
+(use 'clj-kue.core)
+(use '[clj-kue.helpers :only [defhandler]])
+(use 'clj-progress.core)
+
+(defhandler my-handler {:keys [step ticks log]}
+  (init ticks)
+  (dotimes [i ticks]
+    (Thread/sleep step)
+    (tick))
+  (println log)
+  (done))
+
+(process :test 5 my-handler)
 ```
 
 ## License
