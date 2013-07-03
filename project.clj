@@ -1,4 +1,4 @@
-(defproject intervox/clj-kue "0.1.2"
+(defproject intervox/clj-kue "0.1.3"
   :description "Clojure client for Kue"
   :url "https://github.com/Intervox/clj-kue"
   :license {:name "Eclipse Public License"
@@ -7,4 +7,4 @@
                   [cheshire               "5.0.0"]
                   [com.taoensso/carmine   "1.6.0"]
                   [org.clojure/clojure    "1.4.0"]
-                  [intervox/clj-progress  "0.1.0"]])
+                  [intervox/clj-progress  "0.1.1"]])
