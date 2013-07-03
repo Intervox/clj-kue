@@ -5,14 +5,14 @@
 
 (def ^:private car (find-ns 'taoensso.carmine))
 
-(def ^:dynamic *connection* nil)
+(def ^:dynamic *redis-kue-connection* nil)
 
 (def json-opts
   { :escape-non-ascii true  })
 
 (defmacro with-conn [& body]
-  `(car/with-conn (:pool *connection*)
-                  (:spec *connection*)
+  `(car/with-conn (:pool *redis-kue-connection*)
+                  (:spec *redis-kue-connection*)
                   ~@body))
 
 (defn- serialize-arg [x]
@@ -45,7 +45,7 @@
           spec  (->>  spec-opts
                       (apply concat)
                       (apply car/make-conn-spec))]
-      (alter-var-root #'*connection*
+      (alter-var-root #'*redis-kue-connection*
                       (constantly { :pool pool
                                     :spec spec}))
       (with-conn (command :ping)))))
