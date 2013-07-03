@@ -5,10 +5,10 @@
   (alter-var-root #'redis/*redis-kue-connection*
                   assoc :pool pool))
 
-(defn set-connection-spec! [pool]
+(defn set-connection-spec! [spec]
   (alter-var-root #'redis/*redis-kue-connection*
-                  assoc :pool spec))
+                  assoc :spec spec))
 
 (defn set-connection! [pool spec]
   (set-connection-pool! pool)
-  (set-connection-pool! spec))
+  (set-connection-spec! spec))
