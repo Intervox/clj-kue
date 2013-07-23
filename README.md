@@ -58,15 +58,15 @@ For the full list of avaliable connections pool options see [GenericKeyedObjectP
 To alter connection spec or connections pool options you can use one of the following functions:
 
 ```Clojure
-(set-connection-pool! conn-pool)
+(redis/set-connection-pool! conn-pool)
 ```
 
 ```Clojure
-(set-connection-spec! conn-spec)
+(redis/set-connection-spec! conn-spec)
 ```
 
 ```Clojure
-(set-connection! {:pool conn-pool :spec conn-spec})
+(redis/set-connection! {:pool conn-pool :spec conn-spec})
 ```
 
 If you're using [Carmine](https://github.com/ptaoussanis/carmine) prior to `2.0.0` in your project then you shoul consider using [the previous version of `clj-kue`](https://github.com/Intervox/clj-kue/tree/8a8e1a1c5a38f34f0478e33334327f428753df74#installation).
