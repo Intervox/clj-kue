@@ -1,4 +1,4 @@
-(defproject intervox/clj-kue "0.1.4"
+(defproject intervox/clj-kue "0.2.0-SNAPSHOT"
   :description "Clojure client for Kue"
   :url "https://github.com/Intervox/clj-kue"
   :license {:name "Eclipse Public License"
