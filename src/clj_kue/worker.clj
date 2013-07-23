@@ -18,7 +18,7 @@
         last
         ffirst)))
 
-(defn- process [job f]
+(defn- process [^clj_kue.job.IKueJob job f]
   (try  (let [start (. System (nanoTime))]
           (f job)
           (-> (. System (nanoTime))
@@ -67,7 +67,7 @@
   (step [this]
     (with-log-err
       (when-let [id (get-next-job (.get this :type))]
-        (let [job (getJob id)
+        (let [job ^clj_kue.job.IKueJob (getJob id)
               f   (.get this :handler)]
           (.active job)
           (if-let [t  (process job f)]

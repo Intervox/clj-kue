@@ -150,6 +150,7 @@ Advantages of wrapping your handler with `with-kue-job`:
 
  * It catches any console output and sends it to `kue` using job's `log` metod.
  * If you're using [clj-progress](https://github.com/Intervox/clj-progress), it wraps it with special `progress-handler` and sends it to `kue` using job's `progress` metod.
+ * Helpers are safe from reflections.
 
 The previous example may be rewriten using `clj-kue.helpers` namespace:
 

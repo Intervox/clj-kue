@@ -126,8 +126,8 @@
 
   (error [this err]
     (let [msg (if-not (string? err)
-                      (safely (or (.getMessage err)
-                                  (.toString err)))
+                      (safely (or (.getMessage ^Exception err)
+                                  (.toString ^Object err)))
                       err)
           sum (if-not (string? err)
                       (safely (get-stack-trace err)))]
