@@ -1,4 +1,12 @@
 
+0.2.0 / ????-??-??
+==================
+
+  * Removed a lot of reflextions by adding hints.
+  * Migrated to `carmine 2.0.0`.
+  * Updated deps.
+
+
 0.1.4 / 2013-07-03
 ==================
 
