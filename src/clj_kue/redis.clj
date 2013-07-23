@@ -3,23 +3,21 @@
             [cheshire.core    :as json])
   (:use clj-kue.util))
 
-(def ^:private car (find-ns 'taoensso.carmine))
-
 (def ^:dynamic *redis-kue-connection* nil)
 
 (def json-opts
   { :escape-non-ascii true  })
 
 (defmacro with-conn [& body]
-  `(car/with-conn (:pool *redis-kue-connection*)
-                  (:spec *redis-kue-connection*)
-                  ~@body))
+  `(car/wcar *redis-kue-connection* ~@body))
+
+
 
 (defn- serialize-arg [x]
-  (cond
-    (string?  x)  x
-    (keyword? x)  (name x)
-    :else         (json/generate-string x json-opts)))
+  (if (or (string? x)
+          (keyword? x))
+      x
+      (json/generate-string x json-opts)))
 
 (defn parse
   ([x]
@@ -29,23 +27,28 @@
   ([x & ks]
     (update-in x ks parse)))
 
-(defn command [command & args]
-  (apply  (ns-resolve car (symbol (name command)))
-          (map serialize-arg args)))
+(defn command [& args]
+  (car/redis-call (map serialize-arg args)))
+
+(defn set-connection-pool! [pool]
+  (alter-var-root #'*redis-kue-connection*
+                  assoc :pool pool))
+
+(defn set-connection-spec! [spec]
+  (alter-var-root #'*redis-kue-connection*
+                  assoc :spec spec))
+
+(defn set-connection! [{:keys [pool spec]}]
+  (set-connection-pool! pool)
+  (set-connection-spec! spec))
 
 (defn connect!
   ([]
     (connect! nil nil))
-  ([spec-opts]
-    (connect! spec-opts nil))
-  ([spec-opts pool-opts]
-    (let [pool  (->>  pool-opts
-                      (apply concat)
-                      (apply car/make-conn-pool))
-          spec  (->>  spec-opts
-                      (apply concat)
-                      (apply car/make-conn-spec))]
-      (alter-var-root #'*redis-kue-connection*
-                      (constantly { :pool pool
-                                    :spec spec}))
-      (with-conn (command :ping)))))
+  ([spec]
+    (connect! spec nil))
+  ([spec pool]
+    (alter-var-root #'*redis-kue-connection*
+                    (constantly { :pool pool
+                                  :spec spec}))
+    (with-conn (command :ping))))
