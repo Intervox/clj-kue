@@ -11,8 +11,6 @@
 (defmacro with-conn [& body]
   `(car/wcar *redis-kue-connection* ~@body))
 
-
-
 (defn- serialize-arg [x]
   (if (or (string? x)
           (keyword? x))
