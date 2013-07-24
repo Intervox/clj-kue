@@ -1,7 +1,8 @@
 (ns clj-kue.job
   (:refer-clojure :exclude [get set])
   (:require [clj-kue.redis  :as r     ]
-            [clojure.walk   :as walk  ])
+            [clojure.walk   :as walk  ]
+            [clojure.string :as string])
   (:use (clj-time [core   :only [now]]
                   [coerce :only [to-long from-long]])
         clj-kue.util))
@@ -132,7 +133,8 @@
           sum (if-not (string? err)
                       (safely (get-stack-trace err)))]
       (.set this :error msg)
-      (.log this sum))
+      (doseq [line (string/split-lines sum)]
+        (.log this line)))
     (.set this :failed_at (to-long (now))))
 
   (attempt [this]
