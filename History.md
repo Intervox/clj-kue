@@ -1,5 +1,5 @@
 
-0.2.0 / ????-??-??
+0.2.0 / 2013-07-24
 ==================
 
   * Removed a lot of reflextions by adding hints.
