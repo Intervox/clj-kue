@@ -1,4 +1,3 @@
-
 0.2.0 / 2013-07-24
 ==================
 
@@ -6,6 +5,7 @@
   * Migrated to `carmine 2.0.0`.
   * Updated deps.
   * Improved exceptions logging.
+  * **DEPRECATED:** Removed `clj-kue.carmine`.
 
 
 0.1.4 / 2013-07-03
