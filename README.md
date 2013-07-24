@@ -69,7 +69,7 @@ To alter connection spec or connections pool options you can use one of the foll
 (redis/set-connection! {:pool conn-pool :spec conn-spec})
 ```
 
-If you're using [Carmine](https://github.com/ptaoussanis/carmine) prior to `2.0.0` in your project then you shoul consider using [the previous version of `clj-kue`](https://github.com/Intervox/clj-kue/tree/8a8e1a1c5a38f34f0478e33334327f428753df74#installation).
+If you're using [Carmine](https://github.com/ptaoussanis/carmine) prior to `2.0.0` in your project then you shoul consider using [the previous version of `clj-kue`](https://github.com/Intervox/clj-kue/tree/v0.1.x#installation).
 
 ### Workers
 
