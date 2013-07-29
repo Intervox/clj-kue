@@ -150,7 +150,7 @@
             (apply -)
             pos?))))
 
-(defn getJob [id]
+(defn getJob ^clj_kue.job.KueJob [id]
   (let [-key  (str "q:job:" id)
         data  (->>  (r/with-conn
                       (r/command :hgetall -key))

@@ -6,11 +6,12 @@
 
 (defn- get-next-job
   "Attempt to fetch the next job"
-  [type]
+  [type maxidle]
   (let [lkey  (str "q:" type ":jobs")
-        zkey  (str "q:jobs:" type ":inactive")]
+        zkey  (str "q:jobs:" type ":inactive")
+        tout  (or maxidle 0)]
     (-> (r/with-conn
-          (r/command :blpop lkey 0)
+          (r/command :blpop lkey tout)
           (r/command :multi)
           (r/command :zrange zkey 0 0)
           (r/command :zremrangebyrank zkey 0 0)
@@ -18,7 +19,7 @@
         last
         ffirst)))
 
-(defn- process [^clj_kue.job.IKueJob job f]
+(defn- process [^clj_kue.job.KueJob job f]
   (try  (let [start (. System (nanoTime))]
           (f job)
           (-> (. System (nanoTime))
@@ -29,6 +30,14 @@
           (do (.failed job)
               (.error job e)
               false))))
+
+(defn- future-cancel* [f timeout]
+  (if (number? timeout)
+    (cond
+      (zero?  timeout)  (future-cancel f)
+      (pos?   timeout)  (future
+                          (Thread/sleep timeout)
+                          (future-cancel f)))))
 
 (defprotocol IKueWorker
   (get [this k]
@@ -66,8 +75,9 @@
 
   (step [this]
     (with-log-err
-      (when-let [id (get-next-job (.get this :type))]
-        (let [job ^clj_kue.job.IKueJob (getJob id)
+      (when-let [id (get-next-job (.get this :type)
+                                  (.get this :maxidle))]
+        (let [job ^clj_kue.job.KueJob (getJob id)
               f   (.get this :handler)]
           (.active job)
           (if-let [t  (process job f)]
@@ -84,26 +94,25 @@
     (when-not (.getset this :active true)
       (.set this :future
         (future
-          (loop []
-            (.step this)
-            (when (.get this :active)
-              (recur))))))
+          (while (.get this :active)
+            (Thread/sleep 0)
+            (.step this)))))
     this)
 
   (stop [this]
-    (.stop this 0))
+    (.stop this -1))
 
   (stop [this timeout]
-    (when-let [f  (.get this :future)]
-      (let [f*  (future
-                  (Thread/sleep timeout)
-                  (future-cancel f))]
-        (when (.getset this :active false)
-          (safely @(.get this :future))
-          (.set this :future nil))
-        (future-cancel f*)))
+    (when-let [f  (.getset this :future nil)]
+      (let [f*  (future-cancel* f timeout)]
+        (if (.getset this :active false)
+            (safely @f))
+        (if (future? f*)
+            (future-cancel f*))))
     this))
 
-(defn Worker [type f]
+(defn Worker ^clj_kue.worker.KueWorker
+  [type f & {:keys [maxidle]}]
   (new KueWorker (ref { :handler  f
-                        :type     type})))
+                        :type     (name type)
+                        :maxidle  maxidle})))

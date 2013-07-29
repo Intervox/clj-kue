@@ -82,15 +82,32 @@ To create a worker, you use `Worker` function from `clj-kue.worker` namespace:
 (.start worker)
 ```
 
+You can specify any of worker options during its creation:
+
+```Clojure
+(def worker (Worker "test" your-handler :maxidle 1000))
+```
+
+Right now workers support the following options:
+
+ * `maxidle` maximum timeout to wait for a new job in seconds (default `nil`). `0`, `nil` or any `false` value will result in an infinite timeout.
+
+You can also use `get` and `set` methods to access and update workers options, including `type` and `handler` options:
+
+```Clojure
+(.set worker :maxidle 1000)
+(.set worker :handler your-new-handler)
+```
+
+Workers use `ref`s to store their state allowing you to perform "hot" update of their options. For example, you can set a new jobs handler without stopping the worker. You can also set a new `type` of jobs to process, but it'll take effect only on the next processing step.
+
 Each worker have `step`, `start` and `stop` methods.
 
-`step` methods reads single job from `Kue` and processes it with the specified handler.
+`step` methods reads single job from `Kue` and processes it with the specified handler. If there is no jobs in the queue `step` waits for one with maximum timeout of `maxidle` seconds.
 
 `start` methods starts invoking of the `step` method in an infinite loop in the separate thread.
 
-`stop` method closes processing thread. If no `timeout` is specified, it terminates current `step` immediately. If `timeout` is specified, it waits `timeout` miliseconds for `step` to complete. Since `step` includes fetching the current job from the `Kue`, it won't be terminated immediately when the queue is empty.
-
-You can also use `get` and `set` methods to access and update workers properties. Workers use `ref`s to store their state allowing you to perform "hot" update of their properties. For example, you can set a new jobs handler without stopping the worker.
+`stop` method performs graceful shutdown of the `worker`. Calling `stop` will close the processing thread, but not before the next `step` of processing, because there is no way to close the thread while it's waiting for a new job. By default `stop` will block the execution untill the worker is stopped. But you can specify maximum `timeout` in miliseconds to wait. `nil` or negative value will result in infinite `timeout`. You can pass zero `timeout` if you don't want to wait at all. Consider that `stop` uses `interuptions` to shutdown threads after `timeout` and may interrupt processing of the job itself.
 
 ### Creating job handler
 
