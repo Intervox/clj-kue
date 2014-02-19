@@ -212,6 +212,6 @@ Or, if you want to spawn multiple workers:
 
 ## License
 
-Copyright © 2013 Leonid Beschastny
+Copyright © 2013-2014 Leonid Beschastny
 
 Distributed under the Eclipse Public License, the same as Clojure.
